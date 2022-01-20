@@ -1,0 +1,160 @@
+clear all;
+close all;
+clc;
+
+
+ 
+syms t_1 t_2
+%creating matices with my parameters
+%param1 = [10,2, pi/8]; %A,P,phi
+%param2 = [4,1,-pi/7]; %A,P,phi
+param1 = [1.02,.98, 23.5*pi/180]; %A,P,phi Earth
+param2 = [.47,.31, 2*pi/180]; %A,P,phi Mercury
+%param2= [.728,.718,3*pi/180]; %A,P,phi Venus
+%param2 = [1.67,1.38, 25*pi/180]; %A,P,phi Mars
+%param2 = [5.45,4.95,3*pi/180]; %A,P,phi Jupiter
+%param2 = [10.0,9.02, 26.73*pi/180]; %A,P,phi Saturn
+%param2 = [20.1,18.3,98*pi/180]; %A,P,phi Uranus
+%param2= [30.3,30.0, 28*pi/180]; %A,P,phi Neptune
+%param2 = [49.9,29.7,57*pi/180]; %A,P,phi Pluto
+%param2 = [35.082,.586,162.2*pi/180]; %A,P,phi Haley's Comet
+
+%Creating the Orbit's Matrix
+
+trigmatrix1 = [cos(param1(1,3)),sin(param1(1,3));
+              -sin(param1(1,3)),cos(param1(1,3))];
+trigmatrix2 = [cos(param2(1,3)),sin(param2(1,3));
+              -sin(param2(1,3)),cos(param2(1,3))];
+PAmatrix1   =  [(param1(1,2)-param1(1,1))/2 + (param1(1,2)+param1(1,1))/2 *cos(t_1);
+                    sqrt(param1(1,2)*param1(1,1))*sin(t_1)];
+PAmatrix2   =  [(param2(1,2)-param2(1,1))/2 + (param2(1,2)+param2(1,1))/2 *cos(t_2);
+                   sqrt(param2(1,2)*param2(1,1))*sin(t_2) ];
+                
+orbit1 = trigmatrix1 * PAmatrix1;
+orbit2 = trigmatrix2 * PAmatrix2;
+
+%{ Orbits with sun figure 
+
+figure;
+ezplot(subs(orbit1(1)), subs(orbit1(2)))
+hold on;
+ezplot(subs(orbit2(1)), subs(orbit2(2)))
+hold on ; 
+plot(0,0,'mp','MarkerSize',10)
+%legend({'Orbit1','Orbit2', "The Sun"},'Location','northwest')
+%title("Orbits")
+hold on;
+
+%} Creating the functions of the variables so I can input values for the min
+x1t1 = orbit1(1);
+x1_func = inline(x1t1);
+x2t2 = orbit2(1);
+x2_func = inline(x2t2);
+y1t1 = orbit1(2);
+y1_func = inline(y1t1);
+y2t2 = orbit2(2);
+y2_func = inline(y2t2);
+
+
+%take input t, the function works now 
+obj1= .5 * ( ( x1t1 - x2t2 ).^2  + ( y1t1  - y2t2).^2 );
+obj_func = inline(obj1);
+fobj = @(t) obj_func(t(:,1),t(:,2));
+grad = gradient(obj1);
+G = inline(grad);
+gradt = @(t) G(t(1),t(2));
+t0 = [1,1];
+
+[ t_values, t_crit, min_vals, iter] = gradientDescent(t0,param1,param2);
+%{
+%Gradient Descent algo
+t0 = [1, 1];
+maxiter= 100;
+tol = 1e-10;
+iter = 0;
+stepsize = .02;
+t = [];
+t_1 = [];
+t_2 = [];
+min_vals = [];
+while norm(gradt(t0)) > tol && iter < maxiter
+    t = [t;t0];
+    S = -gradt(t0); % Gradient
+    tnew = t0 + stepsize*S';
+    t0 = tnew;
+    iter = iter + 1;
+   
+    
+end 
+t_1 = t(:,1);
+t_2 = t(:,2);
+%}
+
+
+
+
+%Plotting the Positions of Planets after calculating GD
+plot(x1_func(t_crit(1)),y1_func(t_crit(1)),"b*",'MarkerSize',10);
+plot(x2_func(t_crit(2)),y2_func(t_crit(2)),"r*",'MarkerSize',10);
+legend(["Earth's Orbit","Haley's Comet Orbit", "The Sun"],'Location','northwest')
+title("Earth and Haley's Comet's Orbits around the Sun")
+hold off;
+
+
+%} Creating a new set of matrices for the mesh graph. uses t1 and t2, but t_1 and t_2 are the values.
+%t = [5.4515,4.3682]; %testing point
+
+syms  x 
+trigmatrix1 = [cos(param1(1,3)),sin(param1(1,3));
+              -sin(param1(1,3)),cos(param1(1,3))];
+trigmatrix2 = [cos(param2(1,3)),sin(param2(1,3));
+              -sin(param2(1,3)),cos(param2(1,3))];
+PAmatrix1   =  [(param1(1,2)-param1(1,1))/2 + (param1(1,2)+param1(1,1))/2 *cos(x);
+                    sqrt(param1(1,2)*param1(1,1))*sin(x)];
+PAmatrix2   =  [(param2(1,2)-param2(1,1))/2 + (param2(1,2)+param2(1,1))/2 *cos(x);
+                   sqrt(param2(1,2)*param2(1,1))*sin(x) ];
+orbit1x = trigmatrix1 * PAmatrix1;
+orbit2x = trigmatrix2 * PAmatrix2;
+
+ 
+%distance function 
+[t1,t2] = meshgrid(-20:100:80);%For Pluto Only
+%[t1,t2] = meshgrid(-5:.1:5);
+x1t1_double = double(subs(orbit1x(1),x,t1));
+x2t2_double = double(subs(orbit2x(1),x,t2));
+y1t1_double= double(subs(orbit1x(2),x,t1));
+y2t2_double = double(subs(orbit2x(2),x,t2));
+d = 0.5.*((x1t1_double-x2t2_double).^2 + (y1t1_double-y2t2_double).^2);
+figure;
+contourf(t1,t2,d,10);
+hold on;
+plot(t_values(:,1),t_values(:,2),'w.', 'LineWidth', .5)
+%plot(t_values(1:10:iter,1), t_values(1:10:iter,2) ,'m> ','MarkerSize',10)
+plot(t_values(1,1),t_values(1,2),'go','MarkerSize',10) %start point
+plot(t_values(iter, 1),t_values(iter,2), 'ro','MarkerSize',10) %end
+title("Gradient Descent for Earth and Haley's Comet")
+text(t_values(1,1),t_values(1,2),'\leftarrow Start','Color', 'g')
+text(t_values(iter, 1),t_values(iter,2),'\leftarrow Stop', 'Color', 'r')
+xlabel("t1 values")
+ylabel("t2 values")
+hold off;
+%}
+
+
+figure;
+plot(1:iter, t_values)
+hold on;
+title("Values of t1 and t2")
+xlabel("Iterations")
+ylabel("Values")
+legend({'t1','t2'},'Location','northeast')
+hold off;
+
+figure;
+plot(1:iter, fobj(t_values))
+title("The Distance between Earth and Haley's Comet")
+xlabel("Iterations")
+ylabel("Values")
+
+
+
